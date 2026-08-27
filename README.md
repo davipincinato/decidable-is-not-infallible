@@ -2,9 +2,10 @@
 
 ### Teaching materials — NeurIPS 2026 Education Track
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22126692.svg)](https://doi.org/10.5281/zenodo.22126692)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22126691.svg)](https://doi.org/10.5281/zenodo.22126691)
 
-Permanent, citable archive: [doi.org/10.5281/zenodo.22126692](https://doi.org/10.5281/zenodo.22126692).
+Permanent, citable archive: [doi.org/10.5281/zenodo.22126691](https://doi.org/10.5281/zenodo.22126691)
+--- the concept DOI, which always resolves to the newest version.
 Live development repo: [github.com/davipincinato/decidable-is-not-infallible](https://github.com/davipincinato/decidable-is-not-infallible).
 
 A self-contained lesson on **deterministic verification as a generation gate**: the
