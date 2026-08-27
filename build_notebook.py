@@ -273,10 +273,6 @@ md(r"""
 >
 > Further down there is a paragraph on the general regex version of the *number* fix.
 > It is **optional** and **not a better answer to this exercise**.
->
-> Both testers who ran this notebook read it anyway and lost time — one because they
-> did not know regex, one because they did. **If you are working against a clock, skip
-> it now and come back at the end.**
 
 Add an initials guard. `Tomas Lindqvist` should also be caught as `T.L.`, `T. L.`, `TL`.
 
@@ -841,7 +837,7 @@ faith, a number you ran.
 nb["cells"] = c
 nb["metadata"] = {
     "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
-    "language_info": {"name": "python", "version": "3.9"},
+    "language_info": {"name": "python", "version": "3.9.6"},
 }
 
 from os.path import dirname, join

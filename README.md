@@ -18,7 +18,8 @@ The learner builds the loop, then finds the output it wrongly accepts.
 
 ## Run it
 
-1. **Check you have Python 3.9 or newer.**
+1. **Check you have Python 3.9 or newer.** Everything here is tested on 3.9.6;
+   nothing needs a newer feature, but nothing below 3.9 has been tried.
    ```bash
    python3 --version
    ```
@@ -132,7 +133,7 @@ of formats you did not think of, and it is not measurable from inside the system
 - **`verifier_reference.py` is illustrative, not production-grade.** It exists to
   teach the pattern and to give learners something to compare their own `verify_v2`
   against — not to redact real incident reports. A deployed redaction gate would need
-  substantially more coverage than four ordinary-language checks, and `KNOWN_GAPS`
+  substantially more coverage than a handful of ordinary-language checks, and `KNOWN_GAPS`
   documents specific ways this one falls short of that bar on purpose.
 
 ## Level

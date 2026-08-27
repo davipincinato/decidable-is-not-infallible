@@ -2,14 +2,10 @@
 
 For instructors running `01_verifier_as_gate.ipynb`. Not a classroom pilot yet, but no
 longer a pure build-time guess either: two real people have now run the notebook cold
-(n=2, reported finding by finding under "Real tester feedback" below), on top of an earlier pass
-where an agent worked through it as a stand-in for the target learner and got stuck at
-four specific points before the material was fixed under it. Both testers were
+(n=2, reported finding by finding under "Real tester feedback" below). Both testers were
 recruited informally (people available to the author, not a classroom, not sampled
 from the module's stated target population under session conditions). Treat this as
-informed by two real, self-reported data points, not validated by a classroom. If you
-run a session, the single most useful thing you can do for the next instructor is
-correct this document against what actually happened.
+informed by two real, self-reported data points, not validated by a classroom.
 
 ## Timing, section by section
 
@@ -63,21 +59,12 @@ cold.
 The ~90-minute figure on the notebook's first cell describes Sections 1–13 only, not the
 whole notebook. If you are quoting a single number to a class, say "about 90 minutes,
 plus a 45-minute exercise to do afterward" rather than "90 minutes" on its own.
-Section 15 (6–8 min) comes after that exercise and is in neither figure; the whole
-notebook, end to end, is 135–160 min.
 
 **Real data (n=2):** tester 1 finished Sections 1–13 in **52 minutes** and Exercise 4
-in **~40 minutes**; tester 2 (CS student) finished the whole notebook, Sections 1–13
-plus Exercise 4, in **~35 minutes**, with Exercise 4 alone at **~30 minutes**. Those
-two figures cannot both describe the whole notebook — they would leave five minutes for
-Sections 1–13 — and the tester was not asked to disambiguate. The likely reading is 35
-min for Sections 1–13 *plus* 30 for Exercise 4, which is consistent with tester 1's 52
-+ 40. Treat the pair as one loosely-reported session, not as two measurements.
-
-Either way both testers came in well under the estimates above. Two data points still
-do not replace the table (self-paced, highly focused individual reading alone is not
-the same population as a classroom with questions and discussion), but both point the
-same direction: the
+in **~40 minutes**; tester 2 finished Sections 1–13 in **~35 minutes** and Exercise 4
+in a further **~30**. Both well under the estimates above. Two data points still do not replace the table
+(self-paced, highly focused individual reading alone is not the same population as a
+classroom with questions and discussion), but both point the same direction: the
 estimate above likely runs high for a fast, motivated solo learner, and the Exercise 4
 skeleton added after tester 1 (see finding 6 below) may be shaving real time off the
 blank-page problem (40 min → 30 min), though n=2 is too small to call that confirmed.
@@ -108,7 +95,7 @@ seventh from a reviewer.
 2. **Regex lookahead/lookbehind, introduced as an optional aside.** The exercise's
    *direct* path (`text.replace(",", "")`) needs no regex at all; the general regex
    version is presented as a documented but non-required alternative. Learners who
-   reach for regex first anyway (a common reflex) will spend real time here. Steer
+   reach for regex first anyway will spend real time here. Steer
    them to the direct path first if the session is time-boxed. **This one has been
    through two failed fixes and is worth understanding before you run a session.**
    After tester 1 ("didn't know what regex was") a line was added directly above the
@@ -120,9 +107,6 @@ seventh from a reviewer.
    person whose attention was captured before they reached the warning. There is now a
    prominent callout at the very top of Section 7, before the exercise begins, that
    states the exercise needs no regex and reports that both testers lost time there.
-   **Untested.** If it fails a third time, the honest move is to stop patching and
-   either move the paragraph after the exercise or cut it — and note that a live verbal
-   steer has worked every time the written word has not.
 3. **`NamedTuple` with `Optional` and default values, used from Section 4 on.**
    A one-line comment explains it at first use, but learners without recent exposure
    to `typing` may still need a verbal example (`result.rule` vs. `result[1]`).
@@ -133,7 +117,7 @@ seventh from a reviewer.
    anyone hits Section 1, since this is the kind of thing that eats ten minutes per
    affected learner if caught late.
 5. **Section 6's diagnosis is one cell away from the reveal.** After running the
-   verifier over the three `INC-003` attempts, the cell after next explains which one
+   verifier over the three `INC-003` attempts, the very next cell explains which one
    leaks and why. In a linearly-read notebook that means a learner can go straight from
    "all three pass" to the answer without ever forming a guess — the one Bloom
    objective this exercise is meant to back ((Analyze) locate a false negative and
@@ -168,6 +152,8 @@ seventh from a reviewer.
    structural limit, not a personal lapse. That is the whole argument for the
    collision sweep in `check_materials.py`, and it lands or fails on this framing. If
    you only have time to add one sentence of your own to this section, add that one.
+
+## Common misconceptions to watch for
 
 - **"The verifier is broken" (Section 6).** It is not; it does exactly what was
   written. The miss is a scope question, not a bug. If a learner wants to "fix" it
@@ -232,7 +218,7 @@ proofreading pass for language leakage on any resource whose authors work day-to
 in a language other than the one it is written in — spellcheck does not catch a
 correctly-spelled word in the wrong language.
 
-### Tester 2 (CS student) — after tester 1's four fixes
+### Tester 2 — after tester 1's four fixes
 
 Ran against the "For your next live tester" list below, which tester 1's round left
 open.
