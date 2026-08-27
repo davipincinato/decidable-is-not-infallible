@@ -16,8 +16,10 @@ Then, in the notebook:
     text, result, n = repair_loop(report, generator=gen)
 
 Cost note, since a classroom may care: each attempt is a few hundred tokens in and
-out. A full pass over all four reports is a fraction of a cent. It is still not free,
-which is why it is not the default path.
+out, so a full pass over all four reports is small --- but "small" depends on the
+model and on whether extended thinking is on, since reasoning tokens bill as output.
+Price it against the model you actually set before promising a number to a room. It is
+not free, which is why it is not the default path.
 """
 
 import os

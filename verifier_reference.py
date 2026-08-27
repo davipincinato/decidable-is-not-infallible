@@ -132,7 +132,7 @@ def verify_extended(text: str, identifiers: List[str],
                     essential_facts: List[str]) -> VerificationResult:
     """Normalises number formatting and catches initial-forms of names.
 
-    Five defects have lived here at various points, all caught by review rather
+    Six defects have lived here at various points, all caught by review rather
     than by us noticing first, and every one worth naming because this file's own
     coverage list is only as trustworthy as the audit behind it:
 
@@ -241,7 +241,7 @@ are reachable with the fixtures exactly as they ship.
    in its own right (the same one behind lookalike-domain phishing), not a
    normalisation step. This gap is disclosed rather than attempted for exactly that
    reason: a partial fix here would cost real complexity while inviting the same
-   false confidence Section 11 warns against. The Cyrillic Te above is one worked
+   false confidence Section 12 warns against. The Cyrillic Te above is one worked
    instance, not a survey: this file has not been pressure-tested against other
    confusable scripts (Greek, full-width Latin, and others each have their own
    lookalikes), and no claim here should be read as covering them.

@@ -28,7 +28,7 @@ or negative results section that comes from this discovery.
 
 Instead, redirect it to criterion 4. A learner who writes "I chose X, believed it was
 decidable, and found no fact in my input that actually pins it down — here is why, and
-here is what I would need to add for it to become decidable" has done the Section 10
+here is what I would need to add for it to become decidable" has done the Section 10--11
 move for their own domain, unprompted, and should score at the top of criterion 4 for
 it. The only thing to check is that they actually located *why* it is not decidable
 (what fact is missing, and where it would have to come from), not just that they gave

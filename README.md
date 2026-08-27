@@ -9,7 +9,7 @@ Live development repo: [github.com/davipincinato/decidable-is-not-infallible](ht
 
 A self-contained lesson on **deterministic verification as a generation gate**: the
 pattern where a program, not a judge model, decides whether a language model's output
-is acceptable, and its failure message drives the retry. ~80 minutes for the exercises
+is acceptable, and its failure message drives the retry. ~90 minutes for the exercises
 and discussion; Exercise 4 is open-ended and typically needs 45+ minutes more — see
 `02_FACILITATOR_GUIDE.md` for the per-section breakdown.
 
@@ -30,7 +30,9 @@ The learner builds the loop, then finds the output it wrongly accepts.
    ```bash
    python3 check_materials.py
    ```
-   Expected: every line ends in `[ok  ]`, and the last line reads `All claims hold.`
+   Expected: every claim line starts with `[ok  ]` (section headings and the
+   collision-sweep report lines are not claims), and the last line reads
+   `All claims hold.`
    If something fails here, stop and fix the environment before opening the notebook —
    the notebook assumes this passes.
 

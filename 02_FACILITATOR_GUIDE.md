@@ -30,7 +30,7 @@ Add time for a slower group; do not plan to compress it further.
 | 11 | Restoring decidability by adding a fact (knowledge-based check) | 5 min |
 | 12 | What a verifier actually buys you | 3–5 min |
 | 13 | Scoring recorded attempts as a reward (RLVR connection) | 5–7 min |
-| **Subtotal, Sections 1–13** | | **~86–102 min** |
+| **Subtotal, Sections 1–13** | | **~84–107 min** |
 | 14 (Ex. 4) | Learner's own gate: predicate, 3 adversarial cases, defense | **45+ min** |
 | 15 | The same predicate shape gates a JSON payload — and hits its own false negative (read-only, no exercise) | 6–8 min |
 
@@ -48,6 +48,17 @@ domain that shares no code with it. If a session runs out of time, this is a def
 thing to assign as reading — but do not cut it entirely, because it is the only place
 the notebook shows that the gap belongs to writing predicates rather than to matching
 text.
+
+**One caveat if you do assign it as standalone reading.** A reader who came to this
+section without the earlier ones reported that the ticket false negative did *not*
+read as the same problem they had seen before — which is unsurprising, since they had
+not seen it. The section's punch depends on recognising `T.L.`, the Section 10 gap and
+the Section 12 sentence, and it used to name all three without recalling any of them.
+Each back-reference now carries a one-clause reminder of what it refers to, so the
+section stands on its own. That fix has not been re-tested. This matters beyond
+skimmers: because Exercise 4 is meant to be a separate session, even a diligent
+learner meets Section 15 potentially days after Section 7, with those references
+cold.
 
 The ~90-minute figure on the notebook's first cell describes Sections 1–13 only, not the
 whole notebook. If you are quoting a single number to a class, say "about 90 minutes,
@@ -258,18 +269,20 @@ What is now confirmed vs. still open, after two rounds plus one re-read pass:
 - **Not yet tested:** Section 9's encoding-look-alike disclosure carries the same
   "looks like a bug" framing risk as Section 8 did, one section later, and has no
   lead-in warning yet. Watch for the same reaction there.
-- **Read, but not cold, and this distinction matters:** Section 9's second half (the
-  false-alarm checklist, the 2×2 audit grid, the collision sweep) was written after
-  both testers had already run the notebook. Both were then asked to read Sections
-  7–9 again and both signed off with no further questions — in particular, neither
-  came back reading the 2×2 grid as the authors having been careless, which was the
-  specific risk this section was flagged for (stall item 7). That is a real signal and
-  the reason this bullet no longer says "untested". It is a *weak* one: they were
-  re-readers, not fresh readers, already fluent in the material and already disposed
-  to read the admission generously. A first-time learner meeting "our own audit was
-  incomplete" with no prior context is the case still genuinely untested. Watch for it,
-  and watch whether learners connect the sweep to Exercise 4 on their own or need it
-  pointed out — nobody has been asked that yet.
+- **Confirmed working, from two directions:** the 2×2 audit grid in Section 9 reads as
+  intended — as authors finding a structural limit and owning it, not as authors having
+  been careless, which was the specific risk this section was flagged for (stall item
+  7). Both original testers re-read Sections 7–9 and signed off; separately, a reader
+  who opened *only* Sections 9 and 15, with none of the buildup, was asked what they
+  made of the grid and said, unprompted, that the authors "found a structural limit and
+  owned it." The second is the stronger evidence: the framing survives even without the
+  Section 8 false alarm to prepare it. That same reader also confirmed the collision
+  sweep's purpose was clear on its own.
+- **Still genuinely untested:** a first-time learner reading the notebook *linearly*,
+  start to finish, meeting Section 9's admission in the flow the material was written
+  for. Every reader so far has either re-read it knowing the material or jumped
+  straight to it. Also untested: whether learners connect the sweep to their own
+  Exercise 4 without being told.
 - Any word, path, or reference that reads as written by someone thinking in a
   different language than English — worth an explicit check every round, even after a
   clean run, since it is the kind of thing a native speaker of the material's working

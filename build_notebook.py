@@ -427,7 +427,7 @@ Six of the seven rows above are caught, including the baseline sanity check. Onl
 last one, the encoding look-alike, is not — that `Т` is Cyrillic capital Te (U+0422),
 not Latin `T` (U+0054), a different code point that renders identically in most fonts.
 `verifier_reference.py`'s `KNOWN_GAPS` documents it as gap #4, on
-purpose, for the same reason the definite-description gap two sections from now is
+purpose, for the same reason the definite-description gap in the next section is
 documented rather than patched: detecting look-alikes across every script that has one
 is an open-ended, adversarial problem (the one behind lookalike-domain phishing), not a
 normalisation step you add and move on from.
@@ -565,14 +565,14 @@ def flags_by_unique_nationality(text: str, crew_nationality: dict) -> Optional[s
     return None
 
 
-perifrase = RECORDED["INC-003"][1]
-print(flags_by_unique_nationality(perifrase, INC_003_CREW_NATIONALITY))
+paraphrase = RECORDED["INC-003"][1]
+print(flags_by_unique_nationality(paraphrase, INC_003_CREW_NATIONALITY))
 """)
 
 md(r"""
 Expected: `Tomas Lindqvist`. Supplying the roster did not make string matching cleverer
 — it moved the fact that was missing from "the world" into "the input", which is the
-only kind of move that ever restores decidability. This is the third row of the table
+only kind of move that ever restores decidability. This is the third column of the table
 in the two-page description: a knowledge-based check, exact *if the fact is supplied*.
 
 It is also why this is not a satisfying general fix. It closes exactly the phrasing you
@@ -765,15 +765,22 @@ Both pass. Every rule holds: `id` is present, `severity` is in the enum,
 `duration_minutes` is a positive integer. And both are incoherent — a *low*-severity
 incident running three days, a *high*-severity one resolved in sixty seconds.
 
-This is `T.L.` again, in a domain that shares no code with redaction. The schema
-checks each field against its own rule and never checks two fields against **each
-other**, so an output that satisfies every rule individually can still be wrong as a
-whole. The bounded fix is the same kind you wrote in Section 7: add a consistency rule
-relating `severity` to `duration_minutes`. And past it sits the same kind of gap you
-met in Section 10 — whether the severity label is *correct for the incident it
-describes* is not decidable from this payload at all, because the payload never says
-what happened. The fact that would settle it lives outside the input, exactly as crew
-nationality did.
+This is `T.L.` again — the initials that sailed through your first verifier back in
+Section 6, because that verifier only ever looked for the full name — except now it is
+in a domain that shares no code, no data and no subject matter with redaction. The
+schema checks each field against its own rule and never checks two fields against
+**each other**, so an output that satisfies every rule individually can still be wrong
+as a whole.
+
+The rest of the arc repeats too. The bounded fix is the same kind you wrote in
+Section 7 when you extended the verifier: add a consistency rule relating `severity`
+to `duration_minutes`. And past that fix sits the same wall you hit in Section 10 —
+there, a leak phrased as *"the only Swedish engineer on the migration crew"* named
+nobody as a string, and identifying the person needed a fact about the crew that the
+input never contained. Here: whether the severity label is *correct for the incident
+it describes* is not decidable from this payload at all, because the payload never
+says what happened. Same shape, different words — the fact that would settle it lives
+outside the input.
 
 So the sentence from Section 12 travels intact, and it is the real reason this section
 exists: **a verifier certifies no output violates a rule it checks for — not that no
@@ -801,7 +808,12 @@ faith, a number you ran.
 
 - `redaction_task.py` — the reports and their ground truth
 - `recorded_generator.py` — recorded model outputs, with the curation documented
+- `live_generator.py` — the same loop against a live model instead of the
+  recordings. Nothing above needs it: `repair_loop` takes any
+  `generator(feedback) -> str`, so this drops in where `RecordedGenerator` was.
+  Needs an API key and costs money, which is why it is not the default.
 - `verifier_reference.py` — reference solutions, plus `KNOWN_GAPS`
+- `check_materials.py` — the regression suite, including the collision sweep
 - `solutions/` — worked solutions to Exercises 1-3 (Exercise 4 is open-ended by
   design: what it asks for is your own three adversarial cases, not a fixed answer)
 """)
