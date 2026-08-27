@@ -133,7 +133,9 @@ def verify_v2(text: str, identifiers: List[str],
                               .format(form, ident))
 
     for fact in essential_facts:
-        if fact not in normalised:
+        # Same guard as the identifier check: without it, "47 minutes" is found
+        # inside "147 minutes" and the corrupted fact counts as preserved.
+        if not _contains_as_whole_token(fact, normalised):
             return Result(False, "fact_lost",
                           'The essential fact "{}" is missing from your rewrite.'
                           .format(fact))

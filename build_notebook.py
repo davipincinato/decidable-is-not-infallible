@@ -414,8 +414,9 @@ next. **Paraphrase** — specifying a fact without writing it (`verifier_referen
 here; add it to your list anyway.
 
 All six ask the same question: **does a leak get through?** That is one of the two
-ways a verifier can be wrong, and running only those six is how this notebook's own
-audit was incomplete for two rounds — see the second half of this section.
+ways a verifier can be wrong. Worse, all six ask it about one of the verifier's two
+rules. Running the list as written is how this notebook's own audit stayed incomplete
+for three consecutive rounds — the rest of this section is what each round missed.
 """)
 
 code(r"""
@@ -499,23 +500,79 @@ named-entity disambiguation — a research problem, not a regex. So it is disclo
 This section existed, was called an audit, and was declared complete, twice, while
 testing exactly one of the two directions on the check that matters most:
 
-| | identifier check | initials guard |
-|---|---|---|
-| **missed detection** | audited (five rows above) | audited (two) |
-| **false alarm** | *never audited* | audited (Section 8) |
+| | identifier check | initials guard | fact check |
+|---|---|---|---|
+| **missed detection** | audited (five rows above) | audited (two) | *never audited* |
+| **false alarm** | *never audited* | audited (Section 8) | *never audited* |
 
-That empty cell is not an oversight anyone can promise not to repeat, because the
-checklist and the blind spot came from the same person. The structural answer is to
-stop relying on remembering: `check_materials.py` now sweeps every fixture identifier
-against a lexicon of ordinary words, surnames, scientific eponyms and report
-abbreviations, and **fails unless every collision it finds is already written down in
-`KNOWN_GAPS`**. It enumerates where the checklist spot-checks. Run it and read the
-`Collision sweep` section at the bottom — it reports three, and one of them (`PR`, the
-joined initials of `Priya Raman`, colliding with the ordinary abbreviation) was found
-by that sweep rather than by any human reading this code.
+Two empty cells, and the second pair is the more interesting one, so hold it for a
+moment — it is the subject of the next cell. Take the first one first.
+
+The empty cell under *identifier check* is not an oversight anyone can promise not to
+repeat, because the checklist and the blind spot came from the same person. The
+structural answer is to stop relying on remembering: `check_materials.py` sweeps every
+fixture identifier against a lexicon of ordinary words, surnames, scientific eponyms
+and report abbreviations, and **fails unless every collision it finds is already
+written down in `KNOWN_GAPS`**. It enumerates where the checklist spot-checks. Run it
+and read the `Collision sweep` section at the bottom — it reports three, and one of
+them (`PR`, the joined initials of `Priya Raman`, colliding with the ordinary
+abbreviation) was found by that sweep rather than by any human reading this code.
 
 That is the honest ceiling of a hand-written audit, and the cheapest way past it: not
 a better checklist, but a check that does not depend on the author's imagination.
+""")
+
+md(r"""
+Now the whole column this notebook forgot.
+
+Everything so far — both halves of Section 9, the grid, the sweep — is about the rule
+that removes **identifiers**. There is a second rule, and it decides whether the
+**facts survived**. Nobody had ever pointed either question at it. Two lines, using
+`INC-001`'s own ground truth:
+""")
+
+code(r"""
+# INC-001's real essential_facts. Both rewrites below CHANGED the number ---
+# 47 became 147, 1204 became 51204. What does the verifier say about them?
+for text, fact in [("the outage ran 147 minutes total", "47 minutes"),
+                   ("affecting 51204 transactions",     "1204")]:
+    print("{:<38} fact {!r:<14} passed={}"
+          .format(text, fact, verify_extended(text, [], [fact]).passed))
+""")
+
+md(r"""
+Both printed `passed=True` when this was first written, on a verifier whose identifier
+check had *just* been given a boundary guard for this exact defect. The fact check was
+still a bare `fact in text`, so `"47 minutes"` was found inside `"147 minutes"` and the
+gate certified a corrupted number as preserved.
+
+That is worse than the `Raman` false alarm, in a specific way worth naming. A false
+alarm sends good work back for repair: annoying, visible, self-correcting. This is the
+quiet direction — a report published with the wrong outage duration, stamped by a gate
+that says the facts were preserved. And it lands on the property Exercise 1 called the
+whole point of publishing the report at all.
+
+The fix is one line, the same lookarounds, now applied to facts. Both rows print
+`passed=False` above. What survives the fix is narrower and is disclosed as
+`KNOWN_GAPS` #6: `.` and `:` are non-word characters too, so `09:12:45` still counts
+as preserving `09:12`.
+
+**But the fix is not the lesson.** Look at what happened to the remedy. The collision
+sweep was written *because* a hand-written checklist inherits its author's blind spots
+— and the sweep enumerates identifiers against words, and only identifiers. It had no
+fact arm at all. The cure for the blind spot was built with the blind spot, and the
+same class of bug sat undisturbed on the other rule for a full round until an outside
+reader looked. `check_materials.py` now sweeps facts too, over four ways a number can
+be corrupted, and that sweep in turn found something neither the reviewer nor the first
+disclosure had: whether a fact leaks is decided entirely by whether it **ends in a
+digit**. `1204` and `09:12` leak; `47 minutes` and `96 files` cannot, because
+corrupting the number leaves the trailing unit word no longer adjacent. Half these
+facts are safe for a reason that has nothing to do with the verifier.
+
+Three rounds, three remedies, each one finding the previous one incomplete. Sections 10
+and 12 argue that a verifier certifies coverage rather than correctness. This is the
+same claim one level up: it applies to the audit as well, and to the tool you write to
+fix the audit.
 """)
 
 md(r"""

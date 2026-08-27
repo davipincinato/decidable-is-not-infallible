@@ -132,7 +132,7 @@ def verify_extended(text: str, identifiers: List[str],
                     essential_facts: List[str]) -> VerificationResult:
     """Normalises number formatting and catches initial-forms of names.
 
-    Six defects have lived here at various points, all caught by review rather
+    Seven defects have lived here at various points, all caught by review rather
     than by us noticing first, and every one worth naming because this file's own
     coverage list is only as trustworthy as the audit behind it:
 
@@ -157,11 +157,20 @@ def verify_extended(text: str, identifiers: List[str],
       same defect as the initials boundary bug in the first item, in the check that
       matters more, and it went unnoticed for longer because the audit only ever
       tested this check for missed detection. Fixed with the same lookarounds.
+    - The FACT check was a bare substring test too, so a fact silently corrupted
+      into a longer number still counted as preserved: "47 minutes" was found
+      inside "147 minutes", and "1204" inside "51204". Same root cause as the item
+      above, opposite direction --- this one LEAKS rather than false-alarms, and it
+      leaks on the one property the material calls the whole point of publishing
+      the report. It survived the fix above because the fix, and the collision
+      sweep written to generalise it, both looked only at identifiers. Fixed with
+      the same lookarounds, over the same normalised text; see `KNOWN_GAPS` #6 for
+      the part of it that lookarounds do not reach.
 
-    All six were accidents, not planted traps -- unlike the definite-description
+    All seven were accidents, not planted traps -- unlike the definite-description
     gap in `KNOWN_GAPS`, which is designed in. Fixing them does not close the
-    lesson: all five `KNOWN_GAPS` entries survive on purpose, and #3, #4 and #5 are
-    the ones that live in the code fixed above rather than beside it.
+    lesson: all six `KNOWN_GAPS` entries survive on purpose, and #3, #4, #5 and #6
+    are the ones that live in the code fixed above rather than beside it.
     """
     text = _strip_invisible(text)
     normalised = _normalise_numbers(text)
@@ -183,7 +192,7 @@ def verify_extended(text: str, identifiers: List[str],
                     'The initials "{}" still identify "{}".'.format(form, ident))
 
     for fact in essential_facts:
-        if fact not in normalised:
+        if not _contains_as_whole_token(fact, normalised):
             return VerificationResult(
                 False, "fact_lost",
                 'The essential fact "{}" is missing from your rewrite.'.format(fact))
@@ -197,14 +206,22 @@ def verify_extended(text: str, identifiers: List[str],
 
 KNOWN_GAPS = """
 A verifier can be wrong in two directions, and this one is wrong in both. Entries 1,
-2 and 4 are text that LEAKS and still passes; entries 3 and 5 are clean text that is
-WRONGLY REJECTED. The second direction is the one this file's own audit kept
+2, 4 and 6 are text that passes and should not; entries 3 and 5 are clean text that
+is WRONGLY REJECTED. The second direction is the one this file's own audit kept
 forgetting to look in, which is why #5 spells out how it was missed.
 
+The two rules fail differently, and it is worth keeping them apart. In 1, 2 and 4 an
+IDENTIFIER LEAKS. In 6 an identifier does not leak at all --- instead an operational
+FACT has been silently corrupted, and the verifier certifies it as preserved. Both
+say passed=True; only one of them is about privacy. A reader who collapses the two
+directions into "false negative" loses the distinction that decides what a passing
+gate is worth.
+
 Only #1 is reachable with the fixtures exactly as they ship. #3 and #5 need one line
-of ordinary English (the examples are given). #2 and #4 need a variant of a fixture,
-not the fixture itself --- #2 in particular: the shipped INC-004 attempt writes the
-badge literally, so both verifiers CATCH it; what leaks is the "18400s" rephrasing.
+of ordinary English (the examples are given). #2, #4 and #6 need a variant of a
+fixture, not the fixture itself --- #2 in particular: the shipped INC-004 attempt
+writes the badge literally, so both verifiers CATCH it; what leaks is the "18400s"
+rephrasing.
 
 1. DEFINITE DESCRIPTIONS (INC-003, attempt 1).
    "the only Swedish engineer on the migration crew" contains no identifier as a
@@ -278,6 +295,44 @@ badge literally, so both verifiers CATCH it; what leaks is the "18400s" rephrasi
    `check_materials.py` now sweeps every fixture identifier against a lexicon of
    ordinary words and technical terms and fails unless every collision it finds is
    named in this list --- which is how "PR" in #3 turned up.
+
+6. A FACT SWALLOWED BY A LONGER NUMBER ACROSS A DELIMITER.
+   verify_extended("the alert fired at 09:12:45 UTC", [], ["09:12"]) returns
+   passed=True, and so does the same call with "1204" against "a rate of 1204.5 per
+   second". The fact check now requires non-word characters on both sides, which is
+   what stopped "47 minutes" from being found inside "147 minutes". But ":" and "."
+   ARE non-word characters, so a timestamp extended into a more precise one, or a
+   count extended into a decimal, still satisfies the boundary and still counts as
+   preserved. The rewrite has changed the number and the gate certifies that it did
+   not.
+   WHICH FACTS ARE EXPOSED IS AN ACCIDENT OF HOW THEY WERE WRITTEN. The sweep in
+   `check_materials.py` runs all four corruptions over all sixteen numeric fixture
+   facts and the result is exactly predictable: a fact leaks if and only if it ENDS
+   in a digit. "1204", "09:12" and "14 March 2024" leak; "47 minutes", "3 times" and
+   "96 files" survive every corruption -- not because any guard protects them, but
+   because corrupting the number leaves the trailing unit word no longer adjacent,
+   so the fact stops being a substring at all. Half this list is safe for a reason
+   that has nothing to do with the verifier. Read that as the general case: coverage
+   you did not design is coverage you cannot rely on, and the same list of facts
+   written as bare numbers would leak straight through.
+   What separates this from the half that was fixed is not difficulty, it is
+   DECIDABILITY WITHOUT MORE INPUT. "147" is not "47" under any reading, so a rule
+   can say so. Whether "09:12:45" preserves "09:12" or replaces it depends on what
+   the fact was FOR --- the minute the page fired, in which case it is preserved, or
+   the timestamp of record, in which case it is not. Nothing in `essential_facts`
+   says which, because a bare string cannot: the list gives the verifier text to
+   match and no type, no unit, no tolerance. Closing this properly means facts stop
+   being strings and start being typed values with a comparison rule each, which is
+   a different design for the whole interface, not a lookaround.
+   HOW THIS WAS FOUND: a reviewer, from the fixtures' own facts, one round after the
+   identifier-side version of exactly this bug had been fixed AND generalised into
+   the collision sweep. The sweep enumerates identifiers against a word lexicon; it
+   had no fact arm at all. So the remedy written to cure a blind spot was itself
+   built with one, and the class of bug it was written to catch survived on the
+   other rule for a full round. `check_materials.py` now sweeps facts against
+   digit-extension variants as well --- but the honest reading is the one Section 12
+   argues: each of these sweeps covers the failure that was just demonstrated to us,
+   which is not the same as covering the failure.
 
 The instinct on reading this is to add more rules. Resist it long enough to ask what
 the next gap would be. The reports here were written by us; a real corpus supplies

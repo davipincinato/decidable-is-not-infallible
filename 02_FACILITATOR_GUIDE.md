@@ -21,12 +21,12 @@ Add time for a slower group; do not plan to compress it further.
 | 6 | Run the verifier over INC-003, guess the leak, find the T.L. miss | 6–8 min |
 | 7 (Ex. 3) | Extend the verifier: number normalisation + initials guard | 15–20 min |
 | 8 | The extension's own false alarm (IT / ASAP) | 5 min |
-| 9 | Auditing systematically: misses (casing/whitespace/invisible chars fixed, look-alikes disclosed), then false alarms and the collision sweep | 12–15 min |
+| 9 | Auditing systematically: misses (casing/whitespace/invisible chars fixed, look-alikes disclosed), then false alarms and the collision sweep, then the rule the audit never looked at | 15–19 min |
 | 10 | The definite-description gap that does not close | 5–7 min |
 | 11 | Restoring decidability by adding a fact (knowledge-based check) | 5 min |
 | 12 | What a verifier actually buys you | 3–5 min |
 | 13 | Scoring recorded attempts as a reward (RLVR connection) | 5–7 min |
-| **Subtotal, Sections 1–13** | | **~84–107 min** |
+| **Subtotal, Sections 1–13** | | **~87–111 min** |
 | 14 (Ex. 4) | Learner's own gate: predicate, 3 adversarial cases, defense | **45+ min** |
 | 15 | The same predicate shape gates a JSON payload — and hits its own false negative (no exercise, but not passive) | 6–8 min |
 
@@ -70,10 +70,14 @@ skeleton added after tester 1 (see finding 6 below) may be shaving real time off
 blank-page problem (40 min → 30 min), though n=2 is too small to call that confirmed.
 Report your own numbers here rather than trusting either figure blindly.
 
-Note that both testers ran a **shorter Section 9** than the one that ships now: the
-false-alarm half and the collision sweep were added afterward, in response to a
-reviewer finding a false alarm the section had never tested for. Add roughly 6 minutes
-to both reported times before comparing them to the table.
+Note that both testers ran a **much shorter Section 9** than the one that ships now.
+It has grown twice since, both times because an outside reviewer found something the
+section had declared itself finished on: first the false-alarm half and the collision
+sweep, then the third movement about the fact check the audit had never pointed at.
+Add roughly 10 minutes to both reported times before comparing them to the table.
+Neither tester has read the section as it now stands, and it is now the longest
+non-exercise section in the notebook — if you have one thing to time in your own
+session, time this one.
 
 ## Where learners are likely to stall
 
@@ -82,8 +86,9 @@ actual functions afterward. The underlying bugs are fixed, but the concepts that
 them are still genuinely difficult, so expect learners to pause at the same spots even
 though the notebook no longer breaks there. The fifth is a different kind of risk,
 caught by review rather than by a cold walkthrough: not a place learners get stuck, but
-a place they can skip past without noticing. The sixth came from a real tester, the
-seventh from a reviewer.
+a place they can skip past without noticing. The sixth came from a real tester; the
+seventh and eighth from reviewers, in consecutive rounds, each finding the previous
+round's fix incomplete.
 
 1. **Section 7's self-check only exercises half of `verify_v2`.** The first
    self-test loop iterates `INC-003`, which tests the initials guard but never
@@ -152,6 +157,21 @@ seventh from a reviewer.
    structural limit, not a personal lapse. That is the whole argument for the
    collision sweep in `check_materials.py`, and it lands or fails on this framing. If
    you only have time to add one sentence of your own to this section, add that one.
+8. **Section 9's third movement asks them to accept it a second time, about the fix.**
+   After the grid and the sweep, the section turns to the verifier's *other* rule —
+   the one checking that the essential facts survived — and shows it certifying
+   `"147 minutes"` as preserving `"47 minutes"`. Same defect as the one just fixed on
+   the identifier side, on a rule the audit had never questioned in either direction,
+   and the collision sweep written to prevent exactly this had no fact arm at all.
+   Two things to watch for. First, the deflation: a learner who has just been told the
+   sweep is the structural answer now watches the sweep turn out to be incomplete too,
+   and can land on "so nothing works." The section's claim is narrower and worth
+   restating in your own words — each remedy covered the failure that had just been
+   demonstrated, which is progress, and is not the same as coverage. Second, the
+   asymmetry is easy to skate past and is the part with teeth: a false alarm sends good
+   work back for repair, loudly; this one publishes a wrong number under a gate that
+   says the facts were preserved. If a learner takes away only one difference between
+   the two directions, that is the one.
 
 ## Common misconceptions to watch for
 
@@ -171,6 +191,13 @@ seventh from a reviewer.
   a check that enumerates instead of remembering (the collision sweep), not more
   diligence. If a learner proposes a longer checklist, that is the right moment to ask
   what would have to be true for them to know it was complete.
+- **"So the answer is a sweep" (Section 9, third movement).** The corrected version of
+  the misconception above, and the section immediately complicates it: the sweep
+  enumerated identifiers and only identifiers, so the same bug it was written to
+  generalise sat untouched on the fact check. What a sweep buys is that a *known* class
+  of failure stops depending on memory. Choosing which class to enumerate, and over
+  which rule, is still a judgement call made by a person — which is why the fact sweep
+  exists only because someone outside the project asked about the other rule.
 - **"Ex. 4's ground truth turned out not to exist for my domain."** This is not a
   failure state — see the note added to `03_rubric_exercise_4.md`. Some learners will
   pick a domain (a "clean writing" checker, a "polite tone" checker) where the
@@ -287,6 +314,11 @@ What is now confirmed vs. still open, after two rounds plus one re-read pass:
   for. Every reader so far has either re-read it knowing the material or jumped
   straight to it. Also untested: whether learners connect the sweep to their own
   Exercise 4 without being told.
+- **Untested and newest:** Section 9's third movement (the fact check), added after the
+  sign-offs above. Nobody has read it. The grid it extends was confirmed working at two
+  columns; it now has three, and the risk it carries is different from the one that was
+  cleared — not "were the authors careless" but "does anything here hold up," since the
+  section now shows its own remedy falling short. Stall item 8 says how to frame it.
 - Any word, path, or reference that reads as written by someone thinking in a
   different language than English — worth an explicit check every round, even after a
   clean run, since it is the kind of thing a native speaker of the material's working

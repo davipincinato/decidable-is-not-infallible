@@ -33,7 +33,7 @@ The learner builds the loop, then finds the output it wrongly accepts.
    python3 check_materials.py
    ```
    Expected: every claim line starts with `[ok  ]` (section headings and the
-   collision-sweep report lines are not claims), and the last line reads
+   collision- and fact-sweep report lines are not claims), and the last line reads
    `All claims hold.`
    If something fails here, stop and fix the environment before opening the notebook —
    the notebook assumes this passes.

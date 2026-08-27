@@ -10,6 +10,7 @@ discrepancy mid-exercise.
 Exits non-zero on the first broken claim.
 """
 
+import re
 import sys
 from os.path import dirname, join
 
@@ -123,6 +124,24 @@ claim("the substring fix did not weaken detection: a genuine surname leak is "
       "still caught",
       not verify_extended("Costa signed off on the rollback.", IDS_COSTA, []).passed)
 
+# The same defect, on the other rule, found one round later --- see KNOWN_GAPS #6.
+# The identifier version of this bug false-alarms; the fact version LEAKS, and it
+# leaks on accuracy rather than on privacy.
+FACTS_INC_001 = ["47 minutes", "1204"]
+claim("the fact check has the same boundary guard: a fact corrupted into a longer "
+      "number is reported lost, not certified as preserved",
+      not verify_extended("the outage ran 147 minutes total",
+                          [], FACTS_INC_001[:1]).passed
+      and not verify_extended("affecting 51204 transactions",
+                              [], FACTS_INC_001[1:]).passed)
+claim("that guard did not break the facts as written: the shipped INC-001 facts "
+      "still verify against the original report",
+      verify_extended(REPORTS_BY_ID["INC-001"].text,
+                      [], REPORTS_BY_ID["INC-001"].essential_facts).passed)
+claim("the residual is real and disclosed (KNOWN_GAPS #6): a delimiter is a "
+      "non-word character, so an extended timestamp still counts as preserved",
+      verify_extended("the alert fired at 09:12:45 UTC", [], ["09:12"]).passed)
+
 print("\nSection 10 -- and the gap that stays open")
 claim("BOTH verifiers pass INC-003 attempt 1 (the definite description)",
       v1("INC-003", 1).passed and v2("INC-003", 1).passed)
@@ -227,6 +246,88 @@ claim("every collision the sweep finds is disclosed in KNOWN_GAPS",
       found <= DISCLOSED_COLLISIONS)
 claim("every disclosed collision is still real, so the list has no stale entries",
       DISCLOSED_COLLISIONS <= found)
+
+
+# --------------------------------------------------------------------------------
+# The fact sweep --- the second arm, and the reason it exists is worth stating.
+# The sweep above was written to generalise a boundary bug found in the identifier
+# check. It enumerates identifiers against words, and only identifiers. The very
+# same bug was sitting in the fact check the whole time, and a reviewer found it
+# one round later, from the fixtures' own facts. A remedy for a blind spot, built
+# with a blind spot. So: facts get enumerated too, against the corruptions that
+# a longer number can hide inside.
+# --------------------------------------------------------------------------------
+
+_DIGIT_RUN = re.compile(r"\d+")
+
+
+def _corrupt(fact, kind):
+    """Rewrite `fact` into a DIFFERENT value that contains it as a substring.
+
+    Every variant here is wrong: a redaction producing one has changed the number.
+    The question each asks is whether the verifier notices.
+    """
+    if kind == "digit_prefix":       # 47 minutes -> 147 minutes
+        return _DIGIT_RUN.sub(lambda m: "1" + m.group(), fact, count=1)
+    if kind == "digit_suffix":       # 1204 -> 12045
+        runs = list(_DIGIT_RUN.finditer(fact))
+        last = runs[-1]
+        return fact[:last.end()] + "5" + fact[last.end():]
+    if kind == "decimal_extension":  # 1204 -> 1204.5
+        runs = list(_DIGIT_RUN.finditer(fact))
+        last = runs[-1]
+        return fact[:last.end()] + ".5" + fact[last.end():]
+    if kind == "delimiter_extension":  # 09:12 -> 09:12:45
+        runs = list(_DIGIT_RUN.finditer(fact))
+        last = runs[-1]
+        return fact[:last.end()] + ":45" + fact[last.end():]
+    raise ValueError(kind)
+
+
+# Which corruption kinds the verifier is expected to MISS, and on which facts. The
+# sweep is sharper than the reviewer's two examples and than the first disclosure
+# written from them: the leak needs BOTH a corruption that only appends across a
+# delimiter AND a fact that ENDS in a digit. "47 minutes" is immune to all four,
+# not by any guard, but because corrupting the number leaves the trailing unit word
+# no longer adjacent --- the fact stops being a substring at all. Which facts are
+# exposed is therefore a property of how the fixture author happened to write them,
+# not of the verifier. That is worth failing on if it ever changes.
+DISCLOSED_FACT_LEAKS = {"decimal_extension", "delimiter_extension"}  # KNOWN_GAPS #6
+
+FACT_CORRUPTIONS = ["digit_prefix", "digit_suffix",
+                    "decimal_extension", "delimiter_extension"]
+leaked, mismatches = set(), []
+n_facts = 0
+for rep in REPORTS:
+    for fact in rep.essential_facts:
+        if not _DIGIT_RUN.search(fact):
+            continue
+        n_facts += 1
+        ends_in_digit = fact[-1].isdigit()
+        for kind in FACT_CORRUPTIONS:
+            probe = "Post-incident summary: {} in total.".format(_corrupt(fact, kind))
+            leaks = verify_extended(probe, [], [fact]).passed
+            expected = kind in DISCLOSED_FACT_LEAKS and ends_in_digit
+            if leaks:
+                leaked.add(kind)
+            if leaks != expected:
+                mismatches.append((rep.report_id, fact, kind, leaks))
+
+print("\nFact sweep -- {} numeric fixture facts x {} corruption kinds"
+      .format(n_facts, len(FACT_CORRUPTIONS)))
+for kind in sorted(leaked):
+    print("       leaks: a fact ending in a digit, corrupted by {!r}, still counts "
+          "as preserved".format(kind))
+for rid, fact, kind, leaks in mismatches:
+    print("       UNDISCLOSED: {} {!r} under {!r} -> passed={}"
+          .format(rid, fact, kind, leaks))
+claim("every corruption the fact sweep finds leaking is disclosed in KNOWN_GAPS",
+      leaked <= DISCLOSED_FACT_LEAKS)
+claim("every disclosed fact leak is still real, so that list has no stale entries",
+      DISCLOSED_FACT_LEAKS <= leaked)
+claim("the sweep predicts each of the {} outcomes exactly: a fact leaks if and only "
+      "if it ends in a digit and the corruption only appends across a delimiter"
+      .format(n_facts * len(FACT_CORRUPTIONS)), not mismatches)
 
 print()
 if FAILURES:
