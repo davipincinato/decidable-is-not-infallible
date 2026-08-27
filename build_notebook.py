@@ -263,6 +263,21 @@ wasted retry. A false negative ships.
 md(r"""
 ## 7. Exercise 3 — extend it
 
+> ### ⚠️ Before you start: skip the optional regex paragraph
+>
+> This exercise has two halves. The **number** half needs no regex at all —
+> `text.replace(",", "")` is a complete answer. The **initials** half needs to check
+> that a match is a whole word rather than the start of a longer one; write your first
+> version without worrying about that, because Section 8 is built around discovering
+> exactly what goes wrong if you do not.
+>
+> Further down there is a paragraph on the general regex version of the *number* fix.
+> It is **optional** and **not a better answer to this exercise**.
+>
+> Both testers who ran this notebook read it anyway and lost time — one because they
+> did not know regex, one because they did. **If you are working against a clock, skip
+> it now and come back at the end.**
+
 Add an initials guard. `Tomas Lindqvist` should also be caught as `T.L.`, `T. L.`, `TL`.
 
 While you are there, run `INC-004` attempt 1 through your current verifier first.
@@ -291,9 +306,9 @@ Two ways to do the first one. Either is a correct answer to this exercise.
 or nothing at all, so `text.replace(",", "")` strips every thousands separator you
 will actually see here. No regex required.
 
-**If you have never used regex before, skip this paragraph.** It explains a more
-general tool for the same job, not a better answer to this exercise --- `.replace(",",
-"")` above is complete and correct. Come back to it later if you want to.
+> **This is the optional paragraph the warning at the top of the section was about.**
+> Nothing below is needed for this exercise or for any later section. Skipping it
+> costs you nothing; reading it now costs you time you may want for Exercise 3.
 
 **The general way**, if you want a tool that also handles a separator you have not
 seen yet (a space, say): `re.sub(pattern, "", text)` deletes every match of `pattern`.
@@ -360,15 +375,20 @@ print(verify_v2("We need this ASAP please.", ["Ana Silva"], []))
 """)
 
 md(r"""
-The second call passes, as it should — `ASAP` is not `Ana Silva`'s initials, it just
-happens to start with the same two letters. The first one does not. Your verifier just
-told you `"Ines Torres"` is still identified in a sentence about a help desk, because it
-contains the word "IT".
+**Did the second call fail for you too?** If your initials guard tests membership
+directly — `"AS" in text` — then it fired on `ASAP`, and the first call fired on `IT`
+inside nothing at all. That is the **boundary bug**, and it is worth fixing now: require
+that a match is not immediately followed by another letter or digit, so `AS` stops
+matching the start of `ASAP`. (`re.search(r"AS(?!\w)", text)` is one way; a check on the
+character after the match is another. This is the one place the exercise benefits from
+a lookahead, and the optional paragraph in Section 7 explains the notation.)
 
-This is not the same bug as the false alarm you just fixed. If your initials guard still
-matched `IT` as a *prefix* of a longer word like `ITEM`, that was a boundary bug in the
-regex, and it is worth fixing (add a check that the match is not immediately followed by
-another letter or digit). But once that is fixed, `IT` **on its own** still matches, and
+Fix that, and the second call passes — `ASAP` is not `Ana Silva`'s initials, it just
+happens to start with the same two letters. **The first one still does not.** Your
+verifier keeps insisting `"Ines Torres"` is identified in a sentence about a help desk,
+because it contains the word "IT".
+
+That is the part worth stopping on. `IT` **on its own** still matches, and
 there is no regex left to fix it with: a bare two-letter joined form — no periods, no
 spaces — is a string like any other, and "IT" the department is spelled exactly like
 "IT" the initials of "Ines Torres". Nothing in the input tells you which one a reader
@@ -485,7 +505,7 @@ testing exactly one of the two directions on the check that matters most:
 
 | | identifier check | initials guard |
 |---|---|---|
-| **missed detection** | audited (six rows above) | audited |
+| **missed detection** | audited (five rows above) | audited (two) |
 | **false alarm** | *never audited* | audited (Section 8) |
 
 That empty cell is not an oversight anyone can promise not to repeat, because the
@@ -824,7 +844,12 @@ nb["metadata"] = {
     "language_info": {"name": "python", "version": "3.9"},
 }
 
-with open("01_verifier_as_gate.ipynb", "w") as f:
+from os.path import dirname, join
+
+# Write next to this script, not into the current directory --- running the build
+# from a parent folder used to silently leave a stale copy there.
+out = join(dirname(__file__) or ".", "01_verifier_as_gate.ipynb")
+with open(out, "w") as f:
     nbf.write(nb, f)
 
 print("wrote 01_verifier_as_gate.ipynb ({} cells)".format(len(c)))

@@ -22,4 +22,6 @@ SOFTWARE.
 
 ---
 
-Applies to: all `.py` files in this directory and `solutions/`.
+Applies to: every `.py` file in this directory and in `solutions/` EXCEPT
+`redaction_task.py`, whose incident reports are prose and ship under CC BY 4.0
+(see 05_LICENSE-CONTENT). Each file's SPDX header is authoritative.

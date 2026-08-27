@@ -160,7 +160,8 @@ def verify_extended(text: str, identifiers: List[str],
 
     All six were accidents, not planted traps -- unlike the definite-description
     gap in `KNOWN_GAPS`, which is designed in. Fixing them does not close the
-    lesson; see `KNOWN_GAPS` #3, #4 and #5 for the three that survive on purpose.
+    lesson: all five `KNOWN_GAPS` entries survive on purpose, and #3, #4 and #5 are
+    the ones that live in the code fixed above rather than beside it.
     """
     text = _strip_invisible(text)
     normalised = _normalise_numbers(text)
@@ -198,8 +199,12 @@ KNOWN_GAPS = """
 A verifier can be wrong in two directions, and this one is wrong in both. Entries 1,
 2 and 4 are text that LEAKS and still passes; entries 3 and 5 are clean text that is
 WRONGLY REJECTED. The second direction is the one this file's own audit kept
-forgetting to look in, which is why #5 spells out how it was missed. Two of the five
-are reachable with the fixtures exactly as they ship.
+forgetting to look in, which is why #5 spells out how it was missed.
+
+Only #1 is reachable with the fixtures exactly as they ship. #3 and #5 need one line
+of ordinary English (the examples are given). #2 and #4 need a variant of a fixture,
+not the fixture itself --- #2 in particular: the shipped INC-004 attempt writes the
+badge literally, so both verifiers CATCH it; what leaks is the "18400s" rephrasing.
 
 1. DEFINITE DESCRIPTIONS (INC-003, attempt 1).
    "the only Swedish engineer on the migration crew" contains no identifier as a
