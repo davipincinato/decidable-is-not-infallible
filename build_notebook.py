@@ -34,7 +34,7 @@ your program accepts and should not, and you will have to decide what to do abou
 That last part is the point of this notebook. The loop is easy. Knowing what it
 guarantees is not.
 
-**Time:** ~80 minutes for Sections 1-12 (Exercises 1-3 and the discussion). Exercise 4
+**Time:** ~90 minutes for Sections 1-13 (Exercises 1-3 and the discussion). Exercise 4
 is intentionally open-ended and typically needs 45+ minutes on its own --- plan it as a
 second session or take-home rather than folding it into the same sitting. See
 `02_FACILITATOR_GUIDE.md` for a per-section breakdown. **Prerequisites:** Python
@@ -59,8 +59,7 @@ try:
 except ModuleNotFoundError as exc:
     raise ModuleNotFoundError(
         "Could not import redaction_task. Launch Jupyter from inside the "
-        "materiais/ folder these files live in (see README.md), then re-run "
-        "this cell."
+        "folder these files live in (see README.md), then re-run this cell."
     ) from exc
 
 report = REPORTS_BY_ID["INC-001"]
@@ -292,6 +291,10 @@ Two ways to do the first one. Either is a correct answer to this exercise.
 or nothing at all, so `text.replace(",", "")` strips every thousands separator you
 will actually see here. No regex required.
 
+**If you have never used regex before, skip this paragraph.** It explains a more
+general tool for the same job, not a better answer to this exercise --- `.replace(",",
+"")` above is complete and correct. Come back to it later if you want to.
+
 **The general way**, if you want a tool that also handles a separator you have not
 seen yet (a space, say): `re.sub(pattern, "", text)` deletes every match of `pattern`.
 The pattern `r"(?<=\d)[,\s](?=\d{3}\b)"` reads as *a comma or whitespace character,
@@ -346,6 +349,9 @@ md(r"""
 
 Before moving on: run your `verify_v2` on two sentences that have nothing to do with
 these reports.
+
+One of the two calls below will look wrong when you see it — read the explanation
+after running it before deciding whether it is a bug. It is not.
 """)
 
 code(r"""
@@ -368,7 +374,7 @@ spaces — is a string like any other, and "IT" the department is spelled exactl
 "IT" the initials of "Ines Torres". Nothing in the input tells you which one a reader
 would mean.
 
-Section 11 will make a general claim about extensions and coverage. This is what that
+Section 12 will make a general claim about extensions and coverage. This is what that
 claim looks like when it is not hypothetical: the exact rule you added in this exercise
 to close a false negative can open a false alarm of its own, in text the rule was never
 about. Extending a verifier does not make it strictly better along every axis — the
@@ -376,7 +382,128 @@ guard that catches `T.L.` is inseparable from the guard that misreads `IT`.
 """)
 
 md(r"""
-## 9. The part that does not have a fix
+## 9. Auditing systematically, instead of waiting to be told
+
+Section 8's bug was not found by luck — a review went looking for it, on purpose,
+against a checklist. That checklist is reusable. Before adding it to your own
+verifiers, run it against `verifier_reference.verify_extended`, the version you will
+compare your own `verify_v2` against later.
+
+The categories worth checking, for any predicate that matches strings against a
+target: **casing**, **whitespace and line breaks**, **invisible characters**, and
+**encoding look-alikes** — the four this section runs. Two more belong on the same
+list, and you have already met one of them: **indirect reference** is Section 10,
+next. **Paraphrase** — specifying a fact without writing it (`verifier_reference.py`'s
+`KNOWN_GAPS` #2 has the number version) — is not walked through as its own section
+here; add it to your list anyway.
+
+All six ask the same question: **does a leak get through?** That is one of the two
+ways a verifier can be wrong, and running only those six is how this notebook's own
+audit was incomplete for two rounds — see the second half of this section.
+""")
+
+code(r"""
+from verifier_reference import verify_extended
+
+names = ["Tomas Lindqvist", "Lindqvist", "21007"]
+
+audit = [
+    ("baseline", "Tomas Lindqvist was here."),
+    ("casing", "LINDQVIST was here."),
+    ("casing (initials)", "seen with t.l. yesterday"),
+    ("whitespace", "Tomas\nLindqvist was here."),
+    ("whitespace (doubled)", "Tomas  Lindqvist was here."),
+    ("invisible character", "Lindq​vist was here."),   # zero-width space
+    ("encoding look-alike", "seen with Т.L. yesterday"),  # Cyrillic "Т"
+]
+
+for label, text in audit:
+    caught = not verify_extended(text, names, []).passed
+    print("{:<24} caught={}".format(label, caught))
+""")
+
+md(r"""
+Six of the seven rows above are caught, including the baseline sanity check. Only the
+last one, the encoding look-alike, is not — that `Т` is Cyrillic capital Te (U+0422),
+not Latin `T` (U+0054), a different code point that renders identically in most fonts.
+`verifier_reference.py`'s `KNOWN_GAPS` documents it as gap #4, on
+purpose, for the same reason the definite-description gap two sections from now is
+documented rather than patched: detecting look-alikes across every script that has one
+is an open-ended, adversarial problem (the one behind lookalike-domain phishing), not a
+normalisation step you add and move on from.
+
+Casing, whitespace, and invisible characters are a different kind of gap — ordinary
+formatting variation, closed with three small, bounded fixes (`.casefold()`,
+collapsing whitespace, stripping a handful of known zero-width code points). The
+distinction that matters, and the one worth carrying into Exercise 4: **fix what is
+bounded and mechanical; disclose what is genuinely open-ended.** Confusing the two in
+either direction is how a coverage list stops being honest — patch what should be
+disclosed and you invite the illusion that the last rule finished the job; disclose
+what could have been fixed in one line and you are just leaving a known bug in place.
+
+Now the other direction. Every row above asks whether a **leak gets through**. None of
+them asks whether **clean text gets rejected** — and a verifier that rejects good work
+is just as broken as one that accepts bad work, only it fails loudly instead of
+quietly. Run the mirror-image checklist before reading the output:
+""")
+
+code(r"""
+# Same verifier. This time every input is a CLEAN redaction --- no real identifier
+# survives in any of them --- so every row should print passed=True.
+clean = [
+    ("no identifier at all", "The engineer filed the report that evening.",
+     ["Tomas Lindqvist", "Lindqvist", "21007"]),
+    ("surname inside a word", "The costar of the drill rig was unavailable.",
+     ["Mariana Costa", "Costa", "88431"]),
+    ("surname as a term", "Raman spectroscopy equipment failed at 22:40.",
+     ["Priya Raman", "Raman", "OPS-5510"]),
+]
+
+for label, text, ids in clean:
+    print("{:<24} passed={}".format(label, verify_extended(text, ids, []).passed))
+""")
+
+md(r"""
+The third row prints `passed=False`. Nothing was leaked: that sentence is about
+[Raman scattering](https://en.wikipedia.org/wiki/Raman_spectroscopy), a physical
+effect named after a different person entirely, and the redaction removed every real
+identifier. The verifier rejects it because the bare surname `Raman` was listed as an
+identifier and the string is present.
+
+The second row used to fail the same way, and no longer does: `Costa` was firing
+inside `costar`, which is a **partial-word** match — the same defect as the `IT`/`ITEM`
+boundary bug from Section 8, sitting in the primary identifier check rather than the
+initials guard. That one had a bounded fix (require non-word characters on both sides)
+and got it. `Raman` has no such fix: it is a whole word in both the identifier and the
+collision. Telling *Raman the person* from *Raman the scattering effect* is
+named-entity disambiguation — a research problem, not a regex. So it is disclosed, as
+`KNOWN_GAPS` #5.
+
+**The part worth taking with you is not the collision — it is how long it survived.**
+This section existed, was called an audit, and was declared complete, twice, while
+testing exactly one of the two directions on the check that matters most:
+
+| | identifier check | initials guard |
+|---|---|---|
+| **missed detection** | audited (six rows above) | audited |
+| **false alarm** | *never audited* | audited (Section 8) |
+
+That empty cell is not an oversight anyone can promise not to repeat, because the
+checklist and the blind spot came from the same person. The structural answer is to
+stop relying on remembering: `check_materials.py` now sweeps every fixture identifier
+against a lexicon of ordinary words, surnames, scientific eponyms and report
+abbreviations, and **fails unless every collision it finds is already written down in
+`KNOWN_GAPS`**. It enumerates where the checklist spot-checks. Run it and read the
+`Collision sweep` section at the bottom — it reports three, and one of them (`PR`, the
+joined initials of `Priya Raman`, colliding with the ordinary abbreviation) was found
+by that sweep rather than by any human reading this code.
+
+That is the honest ceiling of a hand-written audit, and the cheapest way past it: not
+a better checklist, but a check that does not depend on the author's imagination.
+""")
+
+md(r"""
+## 10. The part that does not have a fix
 
 Your `verify_v2` now catches `T.L.` Run it on `INC-003` attempt 1 again.
 
@@ -405,9 +532,9 @@ real corpus supplies formats nobody thought to anticipate, indefinitely.
 """)
 
 md(r"""
-## 10. What the boundary looks like once you add information
+## 11. What the boundary looks like once you add information
 
-Section 9 called this gap unreachable by string matching, and it is — from what
+Section 10 called this gap unreachable by string matching, and it is — from what
 `verify_v2` is given. That is not the same as unreachable, period. Watch what happens
 when the input grows by exactly one fact.
 """)
@@ -455,7 +582,7 @@ identifies someone on a given team. The boundary moved; it did not disappear.
 """)
 
 md(r"""
-## 11. What a verifier actually buys you
+## 12. What a verifier actually buys you
 
 Here is the claim a verifier supports:
 
@@ -482,7 +609,7 @@ write down what the gate does not cover and stop pretending otherwise.
 """)
 
 md(r"""
-## 12. What happens when you optimise against this
+## 13. What happens when you optimise against this
 
 Everything so far used the verifier to gate a fixed set of recordings: read the
 feedback, hand-pick the next attempt. RLVR does something structurally different — it
@@ -511,7 +638,7 @@ it identifies Tomas Lindqvist immediately — and it earns exactly the same rewa
 attempt 2, which does not leak at all. To anything optimising `reward(v2)`, these two
 outputs are indistinguishable: identical score, no gradient between them.
 
-That is the concrete shape of the closing claim in Section 11. It is not that a trained
+That is the concrete shape of the closing claim in Section 12. It is not that a trained
 model *might stumble onto* the gap by bad luck. There is no signal anywhere in this
 reward pointing away from attempt 1 — optimising against `v2` is not more likely to
 avoid the leak than to reproduce it, because the reward cannot tell them apart. A
@@ -528,20 +655,54 @@ produces a real blind spot, not a smaller one, on the cases it does not.
 """)
 
 md(r"""
-## 13. Exercise 4 — your own gate
+## 14. Exercise 4 — your own gate
 
-Pick a constraint from your own work where the ground truth is available:
+Pick a constraint from your own work where the ground truth is available. A starting
+point for each, one line --- none of these hand you the predicate, only a shove in the
+right direction:
 
-- unit tests that generated code must pass
-- a JSON schema an output must validate against
-- a summary that must not introduce numbers absent from the source
-- a translation that must preserve every named entity
+- **Unit tests a generated function must pass.** Ground truth = the test suite.
+  Predicate = run it; the first failing assertion names the rule that broke.
+- **A JSON schema an output must validate against.** Ground truth = the schema.
+  Predicate = check each required field's presence and type, one at a time.
+- **A summary that must not introduce numbers absent from the source.** Ground truth =
+  every number in the source. Predicate = every number in the summary must be one of
+  those.
+- **A translation that must preserve every named entity.** Ground truth = the named
+  entities in the original. Predicate = each one must appear, in some form, in the
+  translation.
 
-Then write, in this order:
+None of these have to be your domain --- the point is a constraint you already care
+about, not one of these four specifically.
+""")
 
-1. The predicate, returning a structured reason.
-2. **Three inputs you expect it to wrongly accept.** Write these *before* you test it.
-3. The results — did it accept them?
+code(r"""
+def verify_mine(output, ground_truth) -> Result:
+    # TODO
+    # 1. Pick the check most likely to fail first, and write that one first --- do
+    #    not try to enumerate every rule before writing any code.
+    # 2. The moment something is wrong, return Result(False, "short_rule_name",
+    #    "what specifically broke, and where").
+    # 3. Return Result(True) only once nothing you checked was violated.
+    raise NotImplementedError
+
+
+# Three inputs you expect this to wrongly accept -- write these before running them.
+adversarial_cases = [
+    # (output, ground_truth),
+]
+
+for case in adversarial_cases:
+    print(verify_mine(*case))
+""")
+
+md(r"""
+Then, in this order:
+
+1. The predicate above, returning a structured reason.
+2. **The three adversarial inputs**, filled in above. Write these *before* you test
+   them.
+3. The results — did they get wrongly accepted?
 4. One paragraph: extend, or document? Defend the choice.
 
 Step 2 is the exercise. Anyone can write a verifier that passes its own tests.
@@ -550,7 +711,7 @@ Instructors: a grading rubric for this exercise is in `03_rubric_exercise_4.md`.
 """)
 
 md(r"""
-## 14. The skeleton is not tied to redaction
+## 15. The skeleton is not tied to redaction
 
 Everything above --- `Result`, a predicate that returns a reason instead of a boolean,
 a loop that repairs against that reason --- has nothing to do with text redaction
@@ -589,6 +750,35 @@ the thing your own predicate does — the resemblance is the point, not a repeat
 picked something else, the resemblance is still the point: the four bullets in
 Exercise 4 were never four different techniques. They were one technique, naming four
 domains where ground truth happens to be available.
+
+And the resemblance does not stop at the good news. Before reading on, predict what
+this verifier says about the two payloads below:
+""")
+
+code(r"""
+print(verify_ticket_schema({"id": "T-9", "severity": "low", "duration_minutes": 4320}))
+print(verify_ticket_schema({"id": "T-10", "severity": "high", "duration_minutes": 1}))
+""")
+
+md(r"""
+Both pass. Every rule holds: `id` is present, `severity` is in the enum,
+`duration_minutes` is a positive integer. And both are incoherent — a *low*-severity
+incident running three days, a *high*-severity one resolved in sixty seconds.
+
+This is `T.L.` again, in a domain that shares no code with redaction. The schema
+checks each field against its own rule and never checks two fields against **each
+other**, so an output that satisfies every rule individually can still be wrong as a
+whole. The bounded fix is the same kind you wrote in Section 7: add a consistency rule
+relating `severity` to `duration_minutes`. And past it sits the same kind of gap you
+met in Section 10 — whether the severity label is *correct for the incident it
+describes* is not decidable from this payload at all, because the payload never says
+what happened. The fact that would settle it lives outside the input, exactly as crew
+nationality did.
+
+So the sentence from Section 12 travels intact, and it is the real reason this section
+exists: **a verifier certifies no output violates a rule it checks for — not that no
+output is wrong.** You did not need a second domain to learn that. You needed one to
+see that it was never about redaction.
 """)
 
 md(r"""
@@ -603,8 +793,8 @@ papers in the accompanying two-page description.
 
 The failure mode you just found shows up there too, and is discussed far less: a
 verifiable reward is only as good as the verifier's coverage, and coverage gaps become
-optimisation targets the moment a model is trained against them. Section 12 computed
-exactly what that means for the gap you found in Section 9 — not a claim to take on
+optimisation targets the moment a model is trained against them. Section 13 computed
+exactly what that means for the gap you found in Section 10 — not a claim to take on
 faith, a number you ran.
 
 ### Files

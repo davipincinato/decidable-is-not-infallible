@@ -22,11 +22,8 @@ The learner builds the loop, then finds the output it wrongly accepts.
    python3 --version
    ```
 
-2. **Get the files and open a terminal in the `materiais/` folder** (the one this
-   README is in) — unzip the package, or clone the repo, then:
-   ```bash
-   cd materiais
-   ```
+2. **Get the files and open a terminal in the folder this README lives in** — unzip
+   the package, or clone the repo, then `cd` into whichever folder that produced.
 
 3. **Run the regression check.** No installation needed — it only uses the standard
    library.
@@ -42,7 +39,7 @@ The learner builds the loop, then finds the output it wrongly accepts.
 
    **Option A — a code editor with built-in notebook support** (VS Code, PyCharm,
    JupyterLab Desktop, and similar all work the same way):
-   1. Open the `materiais/` folder in the editor.
+   1. Open the folder these files are in, in the editor.
    2. Open `01_verifier_as_gate.ipynb`.
    3. When prompted for a kernel, choose a Python 3.9+ interpreter.
    4. Run the cells in order, from the top — do not skip ahead.
@@ -129,6 +126,11 @@ of formats you did not think of, and it is not measurable from inside the system
 - **Everything is synthetic.** The four incident reports, the names, and the crew
   facts in `redaction_task.py` are invented for this lesson. No real person, real
   incident, or real PII is represented.
+- **`verifier_reference.py` is illustrative, not production-grade.** It exists to
+  teach the pattern and to give learners something to compare their own `verify_v2`
+  against — not to redact real incident reports. A deployed redaction gate would need
+  substantially more coverage than four ordinary-language checks, and `KNOWN_GAPS`
+  documents specific ways this one falls short of that bar on purpose.
 
 ## Level
 

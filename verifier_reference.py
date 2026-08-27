@@ -12,6 +12,12 @@ the distance between them, and the fact that the distance does not close.
 still misses one, and the miss is documented rather than patched. That is not a gap
 left for tidiness: patching it would replace an honest boundary with the illusion
 that one more rule finishes the job.
+
+This file is illustrative, not production-grade. It exists to teach the pattern and
+to give learners something to compare their own implementation against --- not to
+redact real incident reports. A deployed redaction gate would need substantially more
+coverage than the checks here; `KNOWN_GAPS` documents specific, real ways this one
+falls short of that bar, on purpose.
 """
 
 import re
@@ -75,6 +81,39 @@ def _normalise_numbers(text: str) -> str:
     return re.sub(r"(?<=\d)[,\s](?=\d{3}\b)", "", text)
 
 
+_INVISIBLE_CHARS = "\u200b\u200c\u200d\ufeff"  # ZWSP, ZWNJ, ZWJ, BOM/ZW-no-break-space
+
+
+def _strip_invisible(text: str) -> str:
+    """Remove zero-width characters that defeat substring matching without being
+    visible to a human reader. A surname with a zero-width space spliced into the
+    middle of it reads as itself to a human and as a different string to `in`,
+    which is exactly what makes it worth stripping before comparing rather than
+    trusting the text as given.
+    """
+    return text.translate(str.maketrans("", "", _INVISIBLE_CHARS))
+
+
+def _normalise_whitespace(text: str) -> str:
+    """Collapse any run of whitespace --- space, tab, newline --- to one space, so a
+    name broken across a line wrap still reads as itself.
+    """
+    return re.sub(r"\s+", " ", text)
+
+
+def _contains_as_whole_token(needle: str, haystack: str) -> bool:
+    """True when `needle` appears in `haystack` bounded by non-word characters.
+
+    A bare `needle in haystack` fires on an identifier embedded in a longer,
+    unrelated word --- "Costa" inside "costar" --- which rejects a redaction that
+    removed every real identifier. The lookarounds are the same guard the initials
+    check has always had; the identifier check went without one until a reviewer
+    found the false alarm. See `KNOWN_GAPS` #5 for what this does *not* fix.
+    """
+    return re.search(r"(?<!\w){}(?!\w)".format(re.escape(needle)),
+                     haystack) is not None
+
+
 def _initials_of(name: str) -> List[str]:
     """Plausible initial-forms of a full name: 'Tomas Lindqvist' -> T.L., T. L., TL."""
     parts = [p for p in name.split() if p]
@@ -93,8 +132,9 @@ def verify_extended(text: str, identifiers: List[str],
                     essential_facts: List[str]) -> VerificationResult:
     """Normalises number formatting and catches initial-forms of names.
 
-    Two defects lived here until a review caught them, and both are worth naming
-    because they are exactly the lesson this file teaches, aimed at itself:
+    Five defects have lived here at various points, all caught by review rather
+    than by us noticing first, and every one worth naming because this file's own
+    coverage list is only as trustworthy as the audit behind it:
 
     - The initials regex had no trailing boundary, so it matched "IT" as a *prefix*
       of any longer word ("ITEM"), not just the standalone token. Fixed with
@@ -103,22 +143,40 @@ def verify_extended(text: str, identifiers: List[str],
       check, so a badge written "18,402" survived detection while "18400" was
       correctly recognised as the preserved fact. Fixed by checking identifiers
       against the same normalised text used for facts.
+    - Identifier and initials matching were case-sensitive, so "LINDQVIST" and
+      "t.l." both survived undetected. Fixed with `.casefold()` on both sides and
+      `re.IGNORECASE` on the initials search.
+    - A name broken across a line wrap or written with doubled spacing ("Tomas\\n
+      Lindqvist") did not match the single-spaced identifier string. Fixed by
+      collapsing whitespace runs before comparing.
+    - A zero-width space, non-joiner, joiner, or BOM spliced into a name reads as
+      the name to a human and as a different string to `in`. Fixed by stripping
+      those code points before comparing.
+    - The identifier check was a bare substring test, so any identifier embedded in
+      a longer, unrelated word false-alarmed ("Costa" inside "costar"). This is the
+      same defect as the initials boundary bug in the first item, in the check that
+      matters more, and it went unnoticed for longer because the audit only ever
+      tested this check for missed detection. Fixed with the same lookarounds.
 
-    Both were accidents, not planted traps -- unlike the definite-description gap in
-    `KNOWN_GAPS`, which is designed in. Fixing them does not close the lesson; see
-    `KNOWN_GAPS` #3 for the false alarm that survives the fix on purpose.
+    All six were accidents, not planted traps -- unlike the definite-description
+    gap in `KNOWN_GAPS`, which is designed in. Fixing them does not close the
+    lesson; see `KNOWN_GAPS` #3, #4 and #5 for the three that survive on purpose.
     """
+    text = _strip_invisible(text)
     normalised = _normalise_numbers(text)
+    identifier_haystack = _normalise_whitespace(normalised).casefold()
+    initials_haystack = _normalise_whitespace(text)
 
     for ident in identifiers:
-        if ident in normalised:
+        if _contains_as_whole_token(ident.casefold(), identifier_haystack):
             return VerificationResult(
                 False, "identifier_survived",
                 'The identifier "{}" is still present.'.format(ident))
 
         # Guard added after attempt 0 of INC-003 passed v1 with "T.L.".
         for form in _initials_of(ident):
-            if re.search(r"\b{}(?!\w)".format(re.escape(form)), text):
+            if re.search(r"\b{}(?!\w)".format(re.escape(form)), initials_haystack,
+                        re.IGNORECASE):
                 return VerificationResult(
                     False, "identifier_survived",
                     'The initials "{}" still identify "{}".'.format(form, ident))
@@ -133,11 +191,15 @@ def verify_extended(text: str, identifiers: List[str],
 
 
 # --------------------------------------------------------------------------------
-# What v2 still misses --- read this before trusting it
+# What v2 still gets wrong --- read this before trusting it
 # --------------------------------------------------------------------------------
 
 KNOWN_GAPS = """
-Both verifiers pass text that leaks. Two are reachable in the fixtures:
+A verifier can be wrong in two directions, and this one is wrong in both. Entries 1,
+2 and 4 are text that LEAKS and still passes; entries 3 and 5 are clean text that is
+WRONGLY REJECTED. The second direction is the one this file's own audit kept
+forgetting to look in, which is why #5 spells out how it was missed. Two of the five
+are reachable with the fixtures exactly as they ship.
 
 1. DEFINITE DESCRIPTIONS (INC-003, attempt 1).
    "the only Swedish engineer on the migration crew" contains no identifier as a
@@ -159,9 +221,58 @@ Both verifiers pass text that leaks. Two are reachable in the fixtures:
    is left AFTER the bug is fixed. A bare two-letter joined form (no periods) is
    indistinguishable from an ordinary two-letter word by string matching alone --
    there is no regex fix, only a coverage-vs-precision trade the extension made when
-   it added this rule. Exactly the point Section 9 makes in the abstract, reachable
+   it added this rule. Exactly the point Section 12 makes in the abstract, reachable
    here concretely: every rule you add to close a false negative can open a false
    alarm, and this is what one looks like when it is real instead of hypothetical.
+   "IT" is not the only instance, and the second one was found by machine rather
+   than by us: the collision sweep in `check_materials.py` reports that "Priya
+   Raman" generates the joined form "PR", which fires on the ordinary abbreviation
+   for public relations. Same class, same absence of a fix, one more reason to
+   treat this rule as a trade rather than an improvement.
+
+4. UNICODE HOMOGLYPHS.
+   verify_extended("seen with Т.L. yesterday", ["Tomas Lindqvist"], []) still
+   passes: that "Т" is Cyrillic capital Te (U+0422), not Latin "T" (U+0054) --
+   visually identical in most fonts, a different code point to every check in this
+   file. Case-folding and whitespace-collapsing close an entire family of ordinary
+   formatting variation (see the audit in the notebook's Section 9); this is not in
+   that family. Closing it in general means detecting confusable characters across
+   every script that has one, which is an open-ended, actively-adversarial problem
+   in its own right (the same one behind lookalike-domain phishing), not a
+   normalisation step. This gap is disclosed rather than attempted for exactly that
+   reason: a partial fix here would cost real complexity while inviting the same
+   false confidence Section 11 warns against. The Cyrillic Te above is one worked
+   instance, not a survey: this file has not been pressure-tested against other
+   confusable scripts (Greek, full-width Latin, and others each have their own
+   lookalikes), and no claim here should be read as covering them.
+
+5. AN IDENTIFIER THAT IS ALSO AN ORDINARY WORD.
+   verify_extended("Raman spectroscopy equipment failed during the 22:40 batch
+   job.", ["Priya Raman", "Raman", "OPS-5510"], []) returns passed=False on a
+   redaction that removed every real identifier: the bare surname "Raman" collides
+   with the unrelated technical term "Raman spectroscopy". This is #3's failure
+   mode --- a rule closing a false negative opens a false alarm --- but in the
+   PRIMARY identifier check rather than the supplementary initials guard, which
+   makes it load-bearing rather than peripheral.
+   Two halves, and only one of them was fixable. The SUBSTRING half was bounded and
+   is now closed: "Costa" inside "costar" no longer fires, because the identifier
+   check requires non-word characters on both sides, the guard the initials check
+   already had. The WHOLE-WORD half is not reachable that way --- "Raman" is a
+   genuine standalone token in both the identifier and the collision, exactly as
+   "IT" is in #3. Separating "Raman the person" from "Raman the scattering effect"
+   is named-entity disambiguation, a research problem, not a regex. A denylist of
+   known collisions would close these two examples and generalise to nothing.
+   HOW THIS WAS FOUND, AND WHAT THAT SAYS ABOUT THE AUDIT ITSELF: a reviewer hit it
+   on a first attempt, using the fixtures' own identifiers, after the Section 9
+   audit had been declared complete. The audit was asymmetric. It tested the
+   identifier check for MISSED DETECTION (casing, whitespace, invisible characters,
+   look-alikes) and the initials guard for OVER-TRIGGERING (#3), and never tested
+   the identifier check for over-triggering --- the one cell of that grid nobody
+   filled in. That asymmetry, not the collision, is the real defect here: a
+   checklist you wrote yourself inherits the blind spots of the person who wrote it.
+   `check_materials.py` now sweeps every fixture identifier against a lexicon of
+   ordinary words and technical terms and fails unless every collision it finds is
+   named in this list --- which is how "PR" in #3 turned up.
 
 The instinct on reading this is to add more rules. Resist it long enough to ask what
 the next gap would be. The reports here were written by us; a real corpus supplies
@@ -176,7 +287,7 @@ gap between them is exactly the set of formats you did not think of.
 # --------------------------------------------------------------------------------
 # What moves the boundary --- a knowledge-based check over the same definite
 # description, once the missing fact is supplied as input instead of left in the
-# world. See KNOWN_GAPS #1 and the notebook's Section 10.
+# world. See KNOWN_GAPS #1 and the notebook's Section 11.
 # --------------------------------------------------------------------------------
 
 INC_003_CREW_NATIONALITY = {
@@ -205,7 +316,18 @@ def flags_by_unique_nationality(text: str, crew_nationality: dict) -> Optional[s
 # --------------------------------------------------------------------------------
 # The skeleton is not tied to redaction --- the same predicate shape (structured
 # reason, not a boolean) gating a JSON payload against a schema. See the notebook's
-# Section 14. Not an exercise: shown once as a fact, not asked of the learner twice.
+# Section 15. Not an exercise: shown once as a fact, not asked of the learner twice.
+#
+# It carries its own false negative on purpose, and the notebook runs it:
+# {"id": "T-9", "severity": "low", "duration_minutes": 4320} passes every rule below
+# --- id present, severity in the enum, duration a positive integer --- and describes
+# a low-severity incident running three days. Each field is checked against its own
+# rule; no rule checks two fields against EACH OTHER. That is `T.L.` in a domain
+# sharing no code with redaction, which is the point of showing it: the gap is a
+# property of writing predicates, not a property of text matching. The bounded fix is
+# a severity/duration consistency rule; past it sits the undecidable half --- whether
+# the severity label is right for the incident it describes, which the payload never
+# states. Left unfixed deliberately: the learner is asked to see it, not to patch it.
 # --------------------------------------------------------------------------------
 
 def verify_ticket_schema(payload: dict) -> VerificationResult:

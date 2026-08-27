@@ -86,6 +86,26 @@ def _normalise_numbers(text: str) -> str:
     return re.sub(r"(?<=\d)[,\s](?=\d{3}\b)", "", text)
 
 
+_INVISIBLE_CHARS = "\u200b\u200c\u200d\ufeff"  # ZWSP, ZWNJ, ZWJ, BOM/ZW-no-break-space
+
+
+def _strip_invisible(text: str) -> str:
+    """A zero-width space spliced into a name reads as the name to a human and as a
+    different string to `in` --- strip it, and its cousins, before comparing."""
+    return text.translate(str.maketrans("", "", _INVISIBLE_CHARS))
+
+
+def _normalise_whitespace(text: str) -> str:
+    """Collapse any run of whitespace to one space."""
+    return re.sub(r"\s+", " ", text)
+
+
+def _contains_as_whole_token(needle: str, haystack: str) -> bool:
+    """Bounded by non-word characters, so "Costa" does not fire inside "costar"."""
+    return re.search(r"(?<!\w){}(?!\w)".format(re.escape(needle)),
+                     haystack) is not None
+
+
 def _initials_of(name: str) -> List[str]:
     parts = [p for p in name.split() if p]
     if len(parts) < 2:
@@ -96,14 +116,18 @@ def _initials_of(name: str) -> List[str]:
 
 def verify_v2(text: str, identifiers: List[str],
               essential_facts: List[str]) -> Result:
+    text = _strip_invisible(text)
     normalised = _normalise_numbers(text)
+    identifier_haystack = _normalise_whitespace(normalised).casefold()
+    initials_haystack = _normalise_whitespace(text)
 
     for ident in identifiers:
-        if ident in normalised:
+        if _contains_as_whole_token(ident.casefold(), identifier_haystack):
             return Result(False, "identifier_survived",
                           'The identifier "{}" is still present.'.format(ident))
         for form in _initials_of(ident):
-            if re.search(r"\b{}(?!\w)".format(re.escape(form)), text):
+            if re.search(r"\b{}(?!\w)".format(re.escape(form)), initials_haystack,
+                        re.IGNORECASE):
                 return Result(False, "identifier_survived",
                               'The initials "{}" still identify "{}".'
                               .format(form, ident))

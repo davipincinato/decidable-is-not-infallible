@@ -88,24 +88,59 @@ claim("the asymmetric-normalisation leak is closed: a comma-separated identifier
       not verify_extended("The badge is 18,402 and count 18400.",
                           ["18402"], ["18400"]).passed)
 
-print("\nSection 9 -- and the gap that stays open")
+print("\nSection 9 -- auditing systematically: the misses")
+IDS_TL = ["Tomas Lindqvist", "Lindqvist", "21007"]
+claim("case variation is fixed: an uppercase surname no longer survives",
+      not verify_extended("LINDQVIST was here", IDS_TL, []).passed)
+claim("case variation is fixed: lowercase initials no longer survive",
+      not verify_extended("seen with t.l. yesterday", IDS_TL, []).passed)
+claim("whitespace variation is fixed: a newline inside the name no longer survives",
+      not verify_extended("Tomas\nLindqvist was here", IDS_TL, []).passed)
+claim("whitespace variation is fixed: doubled spacing no longer survives",
+      not verify_extended("Tomas  Lindqvist was here", IDS_TL, []).passed)
+claim("a zero-width space spliced into the surname no longer survives",
+      not verify_extended("Lindq​vist was here", IDS_TL, []).passed)
+claim("Unicode homoglyphs are the one left open, disclosed rather than patched: "
+      "a Cyrillic look-alike for 'T' still survives",
+      verify_extended("seen with Т.L. yesterday", IDS_TL, []).passed)
+
+print("\nSection 9 -- auditing systematically: the false alarms, the half that "
+      "went unaudited until a reviewer found it")
+IDS_COSTA = ["Mariana Costa", "Costa", "88431"]
+IDS_RAMAN = ["Priya Raman", "Raman", "OPS-5510"]
+claim("a clean rewrite with no identifier in it passes",
+      verify_extended("The engineer filed the report that evening.",
+                      IDS_TL, []).passed)
+claim("the substring false alarm is fixed: 'Costa' no longer fires inside the "
+      "unrelated word 'costar'",
+      verify_extended("The costar of the drill rig was unavailable.",
+                      IDS_COSTA, []).passed)
+claim("the whole-word false alarm is real and disclosed (KNOWN_GAPS #5): a bare "
+      "surname still collides with an unrelated technical term",
+      not verify_extended("Raman spectroscopy equipment failed at 22:40.",
+                          IDS_RAMAN, []).passed)
+claim("the substring fix did not weaken detection: a genuine surname leak is "
+      "still caught",
+      not verify_extended("Costa signed off on the rollback.", IDS_COSTA, []).passed)
+
+print("\nSection 10 -- and the gap that stays open")
 claim("BOTH verifiers pass INC-003 attempt 1 (the definite description)",
       v1("INC-003", 1).passed and v2("INC-003", 1).passed)
 claim("that attempt contains no identifier as a literal string",
       all(i not in RECORDED["INC-003"][1]
           for i in REPORTS_BY_ID["INC-003"].identifiers))
 
-print("\nSection 10 -- the boundary moves once the missing fact is supplied")
+print("\nSection 11 -- the boundary moves once the missing fact is supplied")
 claim("a knowledge-based check identifies Tomas Lindqvist once crew nationality "
       "is supplied as input",
       flags_by_unique_nationality(RECORDED["INC-003"][1], INC_003_CREW_NATIONALITY)
       == "Tomas Lindqvist")
 
-print("\nSection 12 -- reward under v2 cannot distinguish the leak from the clean pass")
+print("\nSection 13 -- reward under v2 cannot distinguish the leak from the clean pass")
 claim("INC-003 attempt 1 (leaks) and attempt 2 (clean) earn identical reward under v2",
       v2("INC-003", 1).passed and v2("INC-003", 2).passed)
 
-print("\nSection 14 -- the same predicate shape gates a JSON payload, not just text")
+print("\nSection 15 -- the same predicate shape gates a JSON payload, not just text")
 claim("a valid ticket passes",
       verify_ticket_schema(
           {"id": "T-1", "severity": "high", "duration_minutes": 47}).passed)
@@ -117,12 +152,81 @@ claim("an enum violation and a type violation are told apart, not merged into on
           {"id": "T-3", "severity": "urgent", "duration_minutes": 10}).rule
       != verify_ticket_schema(
           {"id": "T-4", "severity": "low", "duration_minutes": -5}).rule)
+claim("the second domain has its own false negative: a low-severity incident running "
+      "three days passes every field rule",
+      verify_ticket_schema(
+          {"id": "T-9", "severity": "low", "duration_minutes": 4320}).passed)
+claim("and its mirror image: a high-severity incident resolved in a minute passes too",
+      verify_ticket_schema(
+          {"id": "T-10", "severity": "high", "duration_minutes": 1}).passed)
 
 print("\nEvery recorded attempt is reachable and every report terminates cleanly")
 for rep in REPORTS:
     attempts = RECORDED[rep.report_id]
     final = verify_v2(attempts[-1], rep.identifiers, rep.essential_facts)
     claim("{}: final recorded attempt passes v2".format(rep.report_id), final.passed)
+
+
+# --------------------------------------------------------------------------------
+# The collision sweep --- the checks above are hand-written, and twice now a
+# reviewer has found a real gap immediately after one of these lists was declared
+# complete. Every claim above is something someone thought to test; this section is
+# the part that does not depend on anyone having thought of it. It enumerates,
+# rather than spot-checks, and it fails on any collision not already disclosed.
+# --------------------------------------------------------------------------------
+
+# Deliberately embedded rather than read from a system dictionary: the package has
+# to run offline, on any machine, with nothing installed. Ordinary English words
+# that double as surnames, plus scientific terms that are eponyms (the exact class
+# a redaction corpus draws names from) and abbreviations common in incident
+# reports --- where a two-letter joined-initials form is most likely to collide.
+COLLISION_LEXICON = """
+baker banks bell bishop black brook brown bush butler chase cook cooper cross day
+drake field fisher flint ford frost glass grant gray green hall hand hart hill
+hope hunt hunter jordan justice king knight lake lane long mark mars mason may
+moore noble page park pike pope port price rand ray reed rice ridge river rose
+sage salt sand sharp shore short snow spark stark stone storm street summer swift
+tanner tower trace vale wade wall ward waters weaver west wild winter wolf wood
+young
+ampere angstrom becquerel bohr boyle celsius costa coulomb curie dalton darcy
+debye doppler euler farad faraday fermi fourier gauss gibbs hertz hooke joule
+kelvin lorentz mach maxwell newton nyquist ohm pascal planck poisson raman
+rankine rayleigh reynolds richter siemens sievert stokes tesla volt watt weber
+api asap cd ci cpu db eod eta fyi gpu hr http io ip it json kpi mvp os poc pr qa
+ram roi sla sql ssd tbd tcp udp ui url ux wip xml yaml
+"""
+
+# Every collision the sweep can find must be named in KNOWN_GAPS. Adding a fixture
+# identifier that collides with an ordinary word fails this check until the gap is
+# either designed out (rename the identifier) or written down (extend KNOWN_GAPS).
+DISCLOSED_COLLISIONS = {
+    ("Costa", "costa"),        # KNOWN_GAPS #5 -- surname that is also a term
+    ("Raman", "raman"),        # KNOWN_GAPS #5 -- the worked example
+    ("Priya Raman", "pr"),     # KNOWN_GAPS #3 -- joined initials vs. abbreviation
+}
+
+
+def _collides(identifier, token):
+    """Does a sentence whose only candidate match is `token` get rejected?"""
+    probe = "Routine note: {} was mentioned in passing.".format(token)
+    return not verify_extended(probe, [identifier], []).passed
+
+
+tokens = sorted({t for t in COLLISION_LEXICON.split() if len(t) >= 2})
+found = {(ident, tok)
+         for rep in REPORTS
+         for ident in rep.identifiers
+         for tok in tokens
+         if _collides(ident, tok)}
+
+print("\nCollision sweep -- {} fixture identifiers x {} lexicon tokens"
+      .format(sum(len(r.identifiers) for r in REPORTS), len(tokens)))
+for ident, tok in sorted(found):
+    print("       collision: identifier {!r} fires on {!r}".format(ident, tok))
+claim("every collision the sweep finds is disclosed in KNOWN_GAPS",
+      found <= DISCLOSED_COLLISIONS)
+claim("every disclosed collision is still real, so the list has no stale entries",
+      DISCLOSED_COLLISIONS <= found)
 
 print()
 if FAILURES:
